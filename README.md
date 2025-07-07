@@ -18,6 +18,18 @@
     <meta name="description" content="Accessible trading platform for BRICS nations with screen reader support and keyboard navigation">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Add package.json for npm dependencies -->
+    <script type="application/json" id="package-json">
+    {
+      "name": "brics-trader",
+      "version": "1.0.0",
+      "description": "BRICS Trader Platform",
+      "dependencies": {
+        "chart.js": "^3.7.1",
+        "tailwindcss": "^3.0.24"
+      }
+    }
+    </script>
     <script>
         // Windows system integration
         if (window.electronAPI || window.__TAURI__) {
@@ -1469,6 +1481,28 @@
         
         setInterval(updateConversionRates, 300000); // Update every 5 minutes
 
+        // Fetch stocks from Node.js API
+        function fetchStocks() {
+            fetch('/api/stocks')
+                .then(response => response.json())
+                .then(data => {
+                    const resultsDiv = document.getElementById('api-results');
+                    resultsDiv.innerHTML = `
+                        <h3 class="font-bold mb-2">Latest Stock Data:</h3>
+                        <ul class="list-disc pl-5">
+                            ${data.stocks.map(stock => `
+                                <li>${stock.symbol}: ${stock.price} (${stock.change})</li>
+                            `).join('')}
+                        </ul>
+                    `;
+                })
+                .catch(error => {
+                    console.error('API Error:', error);
+                    document.getElementById('api-results').textContent = 
+                        'Error fetching data. Make sure the Node.js server is running.';
+                });
+        }
+
         // Company Verification System
         async function verifyCompany(companyData) {
             try {
@@ -1544,6 +1578,51 @@
         }
         
         setInterval(checkPriceAlerts, 30000);
+    </script>
+
+    <!-- Embedded Node.js Server -->
+    <script>
+    // Simple Node.js server implementation
+    if (typeof process !== 'undefined') {
+        const http = require('http');
+        const fs = require('fs');
+        const path = require('path');
+
+        const server = http.createServer((req, res) => {
+            // Serve the HTML file
+            if (req.url === '/') {
+                fs.readFile(path.join(__dirname, 'index.html'), (err, data) => {
+                    if (err) {
+                        res.writeHead(500);
+                        return res.end('Error loading index.html');
+                    }
+                    res.writeHead(200, {'Content-Type': 'text/html'});
+                    res.end(data);
+                });
+            }
+            // API endpoint example
+            else if (req.url === '/api/stocks' && req.method === 'GET') {
+                res.writeHead(200, {'Content-Type': 'application/json'});
+                res.end(JSON.stringify({
+                    stocks: [
+                        {symbol: 'BABA', price: 89.45, change: '+3.2%'},
+                        {symbol: 'TCS.NS', price: 3456.78, change: '+1.8%'},
+                        {symbol: 'GAZP.ME', price: 165.43, change: '-0.7%'}
+                    ]
+                }));
+            }
+            else {
+                res.writeHead(404);
+                res.end('Not Found');
+            }
+        });
+
+        const PORT = process.env.PORT || 3000;
+        server.listen(PORT, () => {
+            console.log(`Server running on port ${PORT}`);
+            console.log(`Open http://localhost:${PORT} in your browser`);
+        });
+    }
     </script>
     
     <!-- FTP Access Modal (hidden by default) -->
